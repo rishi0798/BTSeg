@@ -157,4 +157,24 @@ def test(model, test_loader, device):
         if i==0:
             break
         
-    return prediction, X, one_hot(data['mask'],4).permute(0,3,1,2)
+    return prediction, X
+
+def validate(model, train_loader, epoch,loss_function, 
+          additional_metric, device):
+
+    model.eval()
+    loop = tqdm(train_loader)
+    
+    for data in loop:
+        X = data['image']
+        target = data['mask']
+        X = X.to(device)  # [N, 1, H, W]
+        target = target.to(device)  # [N, H, W] with class indices (0, 4)
+        
+        prediction = model(X)  # [N, 4, H, W]
+        
+        loss = loss_function(prediction, target)
+        metric = additional_metric(prediction, target)
+                
+        loop.set_description('Epoch {}'.format(epoch))
+        loop.set_postfix(loss=loss.item(), iou=metric.item(),max = target.max())

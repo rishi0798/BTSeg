@@ -3,7 +3,8 @@ import torch.nn.functional as F
 from torchvision import transforms
 from unet import UNet
 from load_data import BRATS
-from utils import RandomCrop,ToTensor,DataLoader,iou,train
+from utils import RandomCrop,ToTensor,DataLoader,iou,train,validate
+from torch.utils.data import random_split
 import os
 
 PATH = './weights/model.pth'
@@ -16,7 +17,10 @@ transformed_dataset = BRATS(root_dir='../BRATS/Task01_BrainTumour',
                             transform=transforms.Compose([RandomCrop((224,128)),
                                                ToTensor()]))
 
-dataloader = DataLoader(transformed_dataset, batch_size=8,
+train_dataset,val_set = random_split(transformed_dataset,[10*len(transformed_dataset)//11,len(transformed_dataset)//11]) 
+dataloader = DataLoader(train_dataset, batch_size=8,
+                        shuffle=True, num_workers=4)
+val_dataloader = DataLoader(val_set, batch_size=8,
                         shuffle=True, num_workers=4)
 epochs = 100
 
@@ -32,6 +36,7 @@ if os.path.exists(PATH):
 
 for epoch in range(start_epoch,epochs):
 
+    validate(model,val_dataloader,epoch,F.cross_entropy,iou,device)
     train(model,dataloader,epoch,F.cross_entropy,iou,optim,device)
     
     print("Saving Model")
